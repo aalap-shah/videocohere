@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <drawable name="transparent">#00ffffff</drawable>
+    <drawable name="altercolor1">#202020</drawable>
+    <drawable name="altercolor2">#151515</drawable>
+
+    <color name="selectBlue">#33b5e5</color>
+	<color name="selectTransparentBlue">#AA33b5e5</color>
+    <color name="black_overlay">#66000000</color>
+
+</resources>

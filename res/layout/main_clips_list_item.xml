@@ -1,0 +1,23 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/MainClipsFL"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent" >
+
+    <LinearLayout
+        android:id="@+id/MainClipsLLContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal" />
+
+    <SeekBar
+        android:id="@+id/MainClipsSB"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:max="1000"
+        android:progress="0"
+        android:progressDrawable="@android:color/transparent"
+        android:secondaryProgress="0"
+        android:thumb="@android:color/transparent" />
+
+</FrameLayout>
