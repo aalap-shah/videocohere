@@ -7,17 +7,13 @@ import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
-import android.media.ThumbnailUtils;
 import android.os.AsyncTask;
-import android.provider.MediaStore;
-import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.widget.ImageView;
 
-import com.krystal.videocohere.MainActivity;
 import com.krystal.videocohere.VideoCohereApplication;
 import com.krystal.videocohere.database.DatabaseHelper;
 import com.krystal.videocohere.database.Video;
@@ -180,18 +176,18 @@ public class ThumbnailLoader {
 	
 			if (result != null) {
 				if (mThumbnailsFinalPath == null) 
-					mThumbnailsFinalPath = result + ",";
-				else
-					mThumbnailsFinalPath.concat(result);
+					mThumbnailsFinalPath = result;
+				else 
+					mThumbnailsFinalPath = mThumbnailsFinalPath.concat("," + result);
 			}
 			
-			if (mCount != 0) {
-				mThumbnailsFinalPath.concat(",");
-			} else if ((mCount == 0) && (mVideo != null)) {
+			if ((mCount == 0) && (mVideo != null)) {
 				mVideo.thumbnails = mThumbnailsFinalPath;
+				Log.d ("Swati", "Final thumbnails = " + mThumbnailsFinalPath);
 				mDBA.addVideo(mVideo);
 				mCallback.onSuccess(0);
 				mVideo = null;
+				mThumbnailsFinalPath = null;
 			}
 				
 			super.onPostExecute(result);

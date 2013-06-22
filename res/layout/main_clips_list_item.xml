@@ -4,10 +4,37 @@
     android:layout_height="match_parent" >
 
     <LinearLayout
-        android:id="@+id/MainClipsLLContainer"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+         >
+        
+        <TextView
+        android:id="@+id/MainClipsTV"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal" />
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:textColor="#ffffff"
+        android:textColorHint="#ffffff"
+        android:textIsSelectable="false"
+        android:textStyle="bold" />
+
+        <View style="@style/Divider"/>
+        
+        <HorizontalScrollView
+            android:id="@+id/MainClipsHSV"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_margin="1dp" >
+
+            <LinearLayout
+                android:id="@+id/MainClipsLLContainer"
+                android:layout_width="800dp"
+                android:layout_height="100dp"
+                android:background="#ff0000"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+    </LinearLayout>
 
     <SeekBar
         android:id="@+id/MainClipsSB"

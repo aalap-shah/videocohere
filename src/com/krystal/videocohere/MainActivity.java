@@ -8,12 +8,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -27,6 +27,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.coremedia.iso.IsoFile;
@@ -50,6 +51,7 @@ public class MainActivity extends Activity {
 	private LinearLayout mLinearLayout;
 	private float mDuration = 0;
 	private List<Track> tracks = null;
+	private ProgressDialog mThumbnailPB;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -135,9 +137,13 @@ public class MainActivity extends Activity {
 				convertView.setBackgroundResource(R.drawable.alterselector2);
 			}
 
+			((TextView) convertView.findViewById(R.id.MainClipsTV))
+					.setText("Clip " + (position + 1));
+
 			List<String> thumbnailList = Arrays.asList(currentVideo.thumbnails
 					.split("\\s*,\\s*"));
-			mLinearLayout = (LinearLayout)convertView.findViewById(R.id.MainClipsLLContainer);
+			mLinearLayout = (LinearLayout) convertView
+					.findViewById(R.id.MainClipsLLContainer);
 			for (String thumbnailPath : thumbnailList) {
 
 				ImageView iv = new ImageView(getContext());
@@ -187,7 +193,7 @@ public class MainActivity extends Activity {
 
 		if (requestCode == VIDEO_IMPORT_FROM_GALLERY && resultCode == RESULT_OK) {
 			Uri selectedVideoLocation = data.getData();
-			
+
 			mPath = VideoCohereApplication.getFilePathFromContentUri(
 					selectedVideoLocation, getContentResolver());
 
@@ -206,8 +212,9 @@ public class MainActivity extends Activity {
 
 					if (thb.getWidth() != mPrefs.getInt(
 							"com.krystal.videocohere.standardwidth", 0)
-							|| thb.getHeight() != mPrefs.getInt(
-									"com.krystal.videocohere.standardheight", 0)) {
+							|| thb.getHeight() != mPrefs
+									.getInt("com.krystal.videocohere.standardheight",
+											0)) {
 						mPath = null;
 					}
 					// Log.i("asd", "movie box details are " + thb.getHeight() +
@@ -264,18 +271,29 @@ public class MainActivity extends Activity {
 
 	public void onPrepared() {
 
-		double noOfFrames = 4;
-		float secondInterval = 30;
+		double noOfFrames;
+		float secondInterval;
 
+		Log.d("Swati", "Duration = " + mDuration);
+		noOfFrames = (Math.log(mDuration) / Math.log(2)) + 1;
+
+		secondInterval = (float) (mDuration/noOfFrames);
+		Log.d ("Swati", "noofframes = " + noOfFrames + " secondinterval = " + secondInterval);
 		Video mVideo = new Video(mPath, (int) mDuration);
 		VideoCohereApplication.mTL.loadVideoThumbnails(mMediaRetriever, mVideo,
-				noOfFrames, secondInterval, new ThumbnailLoader.ThumbnailLoaderCallback() {
-					
+				noOfFrames, secondInterval,
+				new ThumbnailLoader.ThumbnailLoaderCallback() {
+
 					@Override
 					public void onSuccess(int status) {
 						refreshVideoList();
 					}
 				});
+
+		mThumbnailPB = new ProgressDialog(this, AlertDialog.THEME_HOLO_DARK);
+		mThumbnailPB.setCancelable(false);
+		mThumbnailPB.setMessage("Loading video");
+		mThumbnailPB.show();
 
 		Movie movie = null;
 		try {
@@ -289,13 +307,15 @@ public class MainActivity extends Activity {
 		tracks = movie.getTracks();
 
 	}
-	
-	public void refreshVideoList () {
+
+	public void refreshVideoList() {
 		mVideos = ((VideoCohereApplication) getApplication()).getDBA()
 				.getVideos();
 
 		mVideoListAdapter = new VideoListArrayAdapter(this, mVideos);
 		ListView mVideoList = (ListView) findViewById(R.id.MainClipsLV);
 		mVideoList.setAdapter(mVideoListAdapter);
+		mThumbnailPB.dismiss();
+		mThumbnailPB = null;
 	}
 }
