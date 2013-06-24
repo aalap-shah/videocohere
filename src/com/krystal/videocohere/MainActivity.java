@@ -7,6 +7,7 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -21,12 +22,18 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.View.OnTouchListener;
+import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,6 +59,10 @@ public class MainActivity extends Activity {
 	private float mDuration = 0;
 	private List<Track> tracks = null;
 	private ProgressDialog mThumbnailPB;
+	private SeekBar mStartSeekBar;
+	private SeekBar mEndSeekBar;
+	private ListView mMainClipsLV;
+	private String TAG = "MainActivity";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +72,47 @@ public class MainActivity extends Activity {
 		mPrefs = this.getSharedPreferences("com.krystal.videocohere",
 				Context.MODE_PRIVATE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.MainClipsLLContainer);
+		mMainClipsLV = (ListView) findViewById(R.id.MainClipsLV);
+		/*ViewTreeObserver vto = mMainClipsLV
+				.getViewTreeObserver();
+		vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
 
+			@SuppressLint("NewApi")
+			@Override
+			public void onGlobalLayout() {
+				Log.d (TAG,"Entered onGlobalLayout");
+				mStartSeekBar = (SeekBar) findViewById(R.id.MainClipsStartSB);
+				mStartSeekBar.setOnTouchListener(new OnTouchListener() {
+					@Override
+					public boolean onTouch(View v, MotionEvent event) {
+						Log.d (TAG,"Entered onTouch Start Seekbar");
+						if (event.getAction() == MotionEvent.ACTION_MOVE) {
+							Log.d (TAG,"Start Seekbar ACTION_MOVE");
+							mStartSeekBar.setProgress(mStartSeekBar
+									.getProgress());
+							return false;
+						}
+						Log.d (TAG,"Start Seekbar !ACTION_MOVE");
+						return true;
+					}
+				});
+				mEndSeekBar = (SeekBar) findViewById(R.id.MainClipsEndSB);
+				mEndSeekBar.setOnTouchListener(new OnTouchListener() {
+
+					@Override
+					public boolean onTouch(View v, MotionEvent event) {
+						Log.d (TAG,"Entered onTouch End Seekbar");
+						if (event.getAction() == MotionEvent.ACTION_MOVE) {
+							Log.d (TAG,"End Seekbar ACTION_MOVE");
+							mEndSeekBar.setProgress(mEndSeekBar.getProgress());
+							return false;
+						}
+						Log.d (TAG,"End Seekbar !ACTION_MOVE " + event.getAction());
+						return true;
+					}
+				});
+			}
+		});*/
 	}
 
 	@Override
@@ -277,8 +328,9 @@ public class MainActivity extends Activity {
 		Log.d("Swati", "Duration = " + mDuration);
 		noOfFrames = (Math.log(mDuration) / Math.log(2)) + 1;
 
-		secondInterval = (float) (mDuration/noOfFrames);
-		Log.d ("Swati", "noofframes = " + noOfFrames + " secondinterval = " + secondInterval);
+		secondInterval = (float) (mDuration / noOfFrames);
+		Log.d("Swati", "noofframes = " + noOfFrames + " secondinterval = "
+				+ secondInterval);
 		Video mVideo = new Video(mPath, (int) mDuration);
 		VideoCohereApplication.mTL.loadVideoThumbnails(mMediaRetriever, mVideo,
 				noOfFrames, secondInterval,
