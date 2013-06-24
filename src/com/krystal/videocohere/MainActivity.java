@@ -18,17 +18,20 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SeekBar;
-import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +42,7 @@ import com.coremedia.iso.boxes.TrackHeaderBox;
 import com.googlecode.mp4parser.authoring.Movie;
 import com.googlecode.mp4parser.authoring.Track;
 import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
+import com.krystal.videocohere.ThumbOnlySeekBar.SeekBarOnTouchCallback;
 import com.krystal.videocohere.database.Video;
 import com.krystal.videocohere.services.ThumbnailLoader;
 
@@ -54,8 +58,8 @@ public class MainActivity extends Activity {
 	private float mDuration = 0;
 	private List<Track> tracks = null;
 	private ProgressDialog mThumbnailPB;
-	private SeekBar mStartSeekBar;
-	private SeekBar mEndSeekBar;
+	private ThumbOnlySeekBar mStartSeekBar;
+	private ThumbOnlySeekBar mEndSeekBar;
 	private ListView mMainClipsLV;
 	private String TAG = "MainActivity";
 
@@ -140,6 +144,59 @@ public class MainActivity extends Activity {
 		private ViewGroup.MarginLayoutParams params = null;
 		private int startProgress;
 		private int originalProgress;
+		private SeekBar mSelectedSeekBar;
+		private boolean mActionMode = false;
+		private HorizontalScrollView mMainClipsHSV;
+
+		private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
+
+			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+				MenuInflater inflater = mode.getMenuInflater();
+				inflater.inflate(R.menu.main_activity_contextual_menu, menu);
+				return true;
+			}
+
+			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+				mActionMode = true;
+				return false;
+			}
+
+			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+
+				switch (item.getItemId()) {
+				case R.id.left_button:
+					if (mSelectedSeekBar != null)
+						mSelectedSeekBar.setProgress(mSelectedSeekBar
+								.getProgress() - 1);
+					return true;
+				case R.id.right_button:
+					if (mSelectedSeekBar != null)
+						mSelectedSeekBar.setProgress(mSelectedSeekBar
+								.getProgress() + 1);
+					return true;
+				default:
+					return false;
+				}
+			}
+
+			public void onDestroyActionMode(ActionMode mode) {
+				mSelectedSeekBar = null;
+				mActionMode = false;
+			}
+		};
+
+		private SeekBarOnTouchCallback mOnSeekBarTouchCallback = new SeekBarOnTouchCallback() {
+			@Override
+			public void onTouch(SeekBar mSeekBar) {
+				/*if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE)
+				mMainClipsHSV.requestDisallowInterceptTouchEvent(true);
+				else if (action == MotionEvent.ACTION_UP)
+					mMainClipsHSV.requestDisallowInterceptTouchEvent(false);*/
+				mSelectedSeekBar = mSeekBar;
+				if (!mActionMode)
+				startActionMode(mActionModeCallback);
+			}
+		};
 
 		public VideoListArrayAdapter(Context context, List<Video> List) {
 			super(context, R.layout.main_clips_list_item);
@@ -189,68 +246,14 @@ public class MainActivity extends Activity {
 				iv.setOnClickListener(this);
 				iv.setOnLongClickListener(this);
 			}
-			
-			mStartSeekBar = (SeekBar) convertView.findViewById(R.id.MainClipsStartSB);
-			mStartSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-				
-				@Override
-				public void onProgressChanged(SeekBar seekBar, int position, boolean fromTouch){
-					Log.d("asd", "Position is " + position);
-					if(fromTouch) {
-						Log.d("asd", "fromTouch");
-					    if ((position > (originalProgress + 20))
-					               || (position < (originalProgress - 20))) {
-					             seekBar.setProgress(originalProgress);
-					    } else {
-					        originalProgress = position;
-					        seekBar.setProgress(originalProgress);
-					    }
-					}     
-				}
 
-				@Override
-				public void onStartTrackingTouch(SeekBar seekBar) {
-					Log.d("asd", "Inside onStartTrackingTouch");
-					        originalProgress = seekBar.getProgress();
-					        Log.d("asd", "setting start progress to " + startProgress); 
-				}
-
-				@Override
-				public void onStopTrackingTouch(SeekBar seekBar) {
-					Log.d("asd", "startProgress > " + startProgress + "  currentProgress" + seekBar.getProgress());
-				}
-			});
-			mEndSeekBar = (SeekBar) convertView.findViewById(R.id.MainClipsEndSB);
-			mEndSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-				
-				@Override
-				public void onProgressChanged(SeekBar seekBar, int position, boolean fromTouch){
-					Log.d("asd", "Position is " + position);
-					if(fromTouch) {
-						Log.d("asd", "fromTouch");
-					    if ((position > (originalProgress + 10))
-					               || (position < (originalProgress - 10))) {
-					             seekBar.setProgress(originalProgress);
-					    } else {
-					        originalProgress = position;
-					        seekBar.setProgress(originalProgress);
-					    }
-					}     
-				}
-
-				@Override
-				public void onStartTrackingTouch(SeekBar seekBar) {
-					Log.d("asd", "Inside onStartTrackingTouch");
-					        originalProgress = seekBar.getProgress();
-					        Log.d("asd", "setting start progress to " + startProgress); 
-				}
-
-				@Override
-				public void onStopTrackingTouch(SeekBar seekBar) {
-					Log.d("asd", "startProgress > " + startProgress + "  currentProgress" + seekBar.getProgress());
-				}
-			});
-			
+			mStartSeekBar = (ThumbOnlySeekBar) convertView
+					.findViewById(R.id.MainClipsStartSB);
+			mStartSeekBar.setOnTouchCallback(mOnSeekBarTouchCallback);
+			mEndSeekBar = (ThumbOnlySeekBar) convertView
+					.findViewById(R.id.MainClipsEndSB);
+			mEndSeekBar.setOnTouchCallback(mOnSeekBarTouchCallback);
+			mMainClipsHSV = (HorizontalScrollView) convertView.findViewById(R.id.MainClipsHSV);
 			return convertView;
 		}
 

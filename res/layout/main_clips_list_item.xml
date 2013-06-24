@@ -33,7 +33,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal" />
-            <SeekBar
+            <com.krystal.videocohere.ThumbOnlySeekBar
                 android:id="@+id/MainClipsStartSB"
                 android:layout_width="match_parent"
                 android:layout_height="38dp"
@@ -44,7 +44,7 @@
                 android:secondaryProgress="0"
                 android:thumb="@drawable/pin" />
 
-            <SeekBar
+            <com.krystal.videocohere.ThumbOnlySeekBar
                 android:id="@+id/MainClipsEndSB"
                 android:layout_width="match_parent"
                 android:layout_height="38dp"
