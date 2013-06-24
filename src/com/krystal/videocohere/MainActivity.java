@@ -7,7 +7,6 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -22,18 +21,14 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewTreeObserver;
-import android.view.View.OnTouchListener;
-import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -73,46 +68,32 @@ public class MainActivity extends Activity {
 				Context.MODE_PRIVATE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.MainClipsLLContainer);
 		mMainClipsLV = (ListView) findViewById(R.id.MainClipsLV);
-		/*ViewTreeObserver vto = mMainClipsLV
-				.getViewTreeObserver();
-		vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
-
-			@SuppressLint("NewApi")
-			@Override
-			public void onGlobalLayout() {
-				Log.d (TAG,"Entered onGlobalLayout");
-				mStartSeekBar = (SeekBar) findViewById(R.id.MainClipsStartSB);
-				mStartSeekBar.setOnTouchListener(new OnTouchListener() {
-					@Override
-					public boolean onTouch(View v, MotionEvent event) {
-						Log.d (TAG,"Entered onTouch Start Seekbar");
-						if (event.getAction() == MotionEvent.ACTION_MOVE) {
-							Log.d (TAG,"Start Seekbar ACTION_MOVE");
-							mStartSeekBar.setProgress(mStartSeekBar
-									.getProgress());
-							return false;
-						}
-						Log.d (TAG,"Start Seekbar !ACTION_MOVE");
-						return true;
-					}
-				});
-				mEndSeekBar = (SeekBar) findViewById(R.id.MainClipsEndSB);
-				mEndSeekBar.setOnTouchListener(new OnTouchListener() {
-
-					@Override
-					public boolean onTouch(View v, MotionEvent event) {
-						Log.d (TAG,"Entered onTouch End Seekbar");
-						if (event.getAction() == MotionEvent.ACTION_MOVE) {
-							Log.d (TAG,"End Seekbar ACTION_MOVE");
-							mEndSeekBar.setProgress(mEndSeekBar.getProgress());
-							return false;
-						}
-						Log.d (TAG,"End Seekbar !ACTION_MOVE " + event.getAction());
-						return true;
-					}
-				});
-			}
-		});*/
+		/*
+		 * ViewTreeObserver vto = mMainClipsLV .getViewTreeObserver();
+		 * vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
+		 * 
+		 * @SuppressLint("NewApi")
+		 * 
+		 * @Override public void onGlobalLayout() { Log.d
+		 * (TAG,"Entered onGlobalLayout"); mStartSeekBar = (SeekBar)
+		 * findViewById(R.id.MainClipsStartSB);
+		 * mStartSeekBar.setOnTouchListener(new OnTouchListener() {
+		 * 
+		 * @Override public boolean onTouch(View v, MotionEvent event) { Log.d
+		 * (TAG,"Entered onTouch Start Seekbar"); if (event.getAction() ==
+		 * MotionEvent.ACTION_MOVE) { Log.d (TAG,"Start Seekbar ACTION_MOVE");
+		 * mStartSeekBar.setProgress(mStartSeekBar .getProgress()); return
+		 * false; } Log.d (TAG,"Start Seekbar !ACTION_MOVE"); return true; } });
+		 * mEndSeekBar = (SeekBar) findViewById(R.id.MainClipsEndSB);
+		 * mEndSeekBar.setOnTouchListener(new OnTouchListener() {
+		 * 
+		 * @Override public boolean onTouch(View v, MotionEvent event) { Log.d
+		 * (TAG,"Entered onTouch End Seekbar"); if (event.getAction() ==
+		 * MotionEvent.ACTION_MOVE) { Log.d (TAG,"End Seekbar ACTION_MOVE");
+		 * mEndSeekBar.setProgress(mEndSeekBar.getProgress()); return false; }
+		 * Log.d (TAG,"End Seekbar !ACTION_MOVE " + event.getAction()); return
+		 * true; } }); } });
+		 */
 	}
 
 	@Override
@@ -157,6 +138,8 @@ public class MainActivity extends Activity {
 		private LayoutInflater mInflater;
 		/* TODO why is this needed? */
 		private ViewGroup.MarginLayoutParams params = null;
+		private int startProgress;
+		private int originalProgress;
 
 		public VideoListArrayAdapter(Context context, List<Video> List) {
 			super(context, R.layout.main_clips_list_item);
@@ -206,7 +189,68 @@ public class MainActivity extends Activity {
 				iv.setOnClickListener(this);
 				iv.setOnLongClickListener(this);
 			}
+			
+			mStartSeekBar = (SeekBar) convertView.findViewById(R.id.MainClipsStartSB);
+			mStartSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+				
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int position, boolean fromTouch){
+					Log.d("asd", "Position is " + position);
+					if(fromTouch) {
+						Log.d("asd", "fromTouch");
+					    if ((position > (originalProgress + 20))
+					               || (position < (originalProgress - 20))) {
+					             seekBar.setProgress(originalProgress);
+					    } else {
+					        originalProgress = position;
+					        seekBar.setProgress(originalProgress);
+					    }
+					}     
+				}
 
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+					Log.d("asd", "Inside onStartTrackingTouch");
+					        originalProgress = seekBar.getProgress();
+					        Log.d("asd", "setting start progress to " + startProgress); 
+				}
+
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+					Log.d("asd", "startProgress > " + startProgress + "  currentProgress" + seekBar.getProgress());
+				}
+			});
+			mEndSeekBar = (SeekBar) convertView.findViewById(R.id.MainClipsEndSB);
+			mEndSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+				
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int position, boolean fromTouch){
+					Log.d("asd", "Position is " + position);
+					if(fromTouch) {
+						Log.d("asd", "fromTouch");
+					    if ((position > (originalProgress + 10))
+					               || (position < (originalProgress - 10))) {
+					             seekBar.setProgress(originalProgress);
+					    } else {
+					        originalProgress = position;
+					        seekBar.setProgress(originalProgress);
+					    }
+					}     
+				}
+
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+					Log.d("asd", "Inside onStartTrackingTouch");
+					        originalProgress = seekBar.getProgress();
+					        Log.d("asd", "setting start progress to " + startProgress); 
+				}
+
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+					Log.d("asd", "startProgress > " + startProgress + "  currentProgress" + seekBar.getProgress());
+				}
+			});
+			
 			return convertView;
 		}
 
