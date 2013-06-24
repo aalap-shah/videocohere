@@ -38,10 +38,10 @@ public class ThumbOnlySeekBar extends SeekBar {
 				+ (int) event.getY());
 		Log.d ("Swati", "Bounds = " + mThumb.getBounds());
 		Rect mBounds = mThumb.getBounds();
-		Rect newBounds = new Rect (mBounds.left - 10, mBounds.top - 10, mBounds.bottom +10,mBounds.right +10 );
+		Rect newBounds = new Rect (mBounds.left - 20, mBounds.top - 20, mBounds.right +20,mBounds.bottom +20 );
 		Log.d ("Swati", "New Bounds = " + newBounds.toString());
 		
-		if (!mBounds
+		if (!newBounds
 				.contains((int) event.getX(), (int) event.getY())) {
 			Log.d (TAG , "Returning false");
 			return false;
