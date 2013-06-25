@@ -23,11 +23,9 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -58,10 +56,6 @@ public class MainActivity extends Activity {
 	private float mDuration = 0;
 	private List<Track> tracks = null;
 	private ProgressDialog mThumbnailPB;
-	private ThumbOnlySeekBar mStartSeekBar;
-	private ThumbOnlySeekBar mEndSeekBar;
-	private ListView mMainClipsLV;
-	private String TAG = "MainActivity";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -71,33 +65,7 @@ public class MainActivity extends Activity {
 		mPrefs = this.getSharedPreferences("com.krystal.videocohere",
 				Context.MODE_PRIVATE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.MainClipsLLContainer);
-		mMainClipsLV = (ListView) findViewById(R.id.MainClipsLV);
-		/*
-		 * ViewTreeObserver vto = mMainClipsLV .getViewTreeObserver();
-		 * vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
-		 * 
-		 * @SuppressLint("NewApi")
-		 * 
-		 * @Override public void onGlobalLayout() { Log.d
-		 * (TAG,"Entered onGlobalLayout"); mStartSeekBar = (SeekBar)
-		 * findViewById(R.id.MainClipsStartSB);
-		 * mStartSeekBar.setOnTouchListener(new OnTouchListener() {
-		 * 
-		 * @Override public boolean onTouch(View v, MotionEvent event) { Log.d
-		 * (TAG,"Entered onTouch Start Seekbar"); if (event.getAction() ==
-		 * MotionEvent.ACTION_MOVE) { Log.d (TAG,"Start Seekbar ACTION_MOVE");
-		 * mStartSeekBar.setProgress(mStartSeekBar .getProgress()); return
-		 * false; } Log.d (TAG,"Start Seekbar !ACTION_MOVE"); return true; } });
-		 * mEndSeekBar = (SeekBar) findViewById(R.id.MainClipsEndSB);
-		 * mEndSeekBar.setOnTouchListener(new OnTouchListener() {
-		 * 
-		 * @Override public boolean onTouch(View v, MotionEvent event) { Log.d
-		 * (TAG,"Entered onTouch End Seekbar"); if (event.getAction() ==
-		 * MotionEvent.ACTION_MOVE) { Log.d (TAG,"End Seekbar ACTION_MOVE");
-		 * mEndSeekBar.setProgress(mEndSeekBar.getProgress()); return false; }
-		 * Log.d (TAG,"End Seekbar !ACTION_MOVE " + event.getAction()); return
-		 * true; } }); } });
-		 */
+
 	}
 
 	@Override
@@ -142,61 +110,10 @@ public class MainActivity extends Activity {
 		private LayoutInflater mInflater;
 		/* TODO why is this needed? */
 		private ViewGroup.MarginLayoutParams params = null;
-		private int startProgress;
-		private int originalProgress;
+		private SeekBar mStartSeekBar;
+		private SeekBar mEndSeekBar;
 		private SeekBar mSelectedSeekBar;
-		private boolean mActionMode = false;
-		private HorizontalScrollView mMainClipsHSV;
-
-		private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
-
-			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-				MenuInflater inflater = mode.getMenuInflater();
-				inflater.inflate(R.menu.main_activity_contextual_menu, menu);
-				return true;
-			}
-
-			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-				mActionMode = true;
-				return false;
-			}
-
-			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-
-				switch (item.getItemId()) {
-				case R.id.left_button:
-					if (mSelectedSeekBar != null)
-						mSelectedSeekBar.setProgress(mSelectedSeekBar
-								.getProgress() - 1);
-					return true;
-				case R.id.right_button:
-					if (mSelectedSeekBar != null)
-						mSelectedSeekBar.setProgress(mSelectedSeekBar
-								.getProgress() + 1);
-					return true;
-				default:
-					return false;
-				}
-			}
-
-			public void onDestroyActionMode(ActionMode mode) {
-				mSelectedSeekBar = null;
-				mActionMode = false;
-			}
-		};
-
-		private SeekBarOnTouchCallback mOnSeekBarTouchCallback = new SeekBarOnTouchCallback() {
-			@Override
-			public void onTouch(SeekBar mSeekBar) {
-				/*if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE)
-				mMainClipsHSV.requestDisallowInterceptTouchEvent(true);
-				else if (action == MotionEvent.ACTION_UP)
-					mMainClipsHSV.requestDisallowInterceptTouchEvent(false);*/
-				mSelectedSeekBar = mSeekBar;
-				if (!mActionMode)
-				startActionMode(mActionModeCallback);
-			}
-		};
+		protected boolean mActionModeShown = false;
 
 		public VideoListArrayAdapter(Context context, List<Video> List) {
 			super(context, R.layout.main_clips_list_item);
@@ -212,13 +129,87 @@ public class MainActivity extends Activity {
 									.getDisplayMetrics()));
 		}
 
+		private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
+
+			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+				MenuInflater inflater = mode.getMenuInflater();
+				inflater.inflate(R.menu.main_activity_contextual_menu, menu);
+				return true;
+			}
+
+			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+				mActionModeShown = true;
+				return false;
+			}
+
+			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+
+				switch (item.getItemId()) {
+				case R.id.left_button:
+					
+					if (mSelectedSeekBar != null) {
+						Log.d("Swati", "Moving left " + mSelectedSeekBar.getProgress());
+						mSelectedSeekBar.setProgress(mSelectedSeekBar
+								.getProgress() - 1);
+						Log.d("Swati", "Moving left " + mSelectedSeekBar.getProgress());
+					}
+					return true;
+				case R.id.right_button:
+					
+					if (mSelectedSeekBar != null) {
+						Log.d ("Swati", "Moving right " + mSelectedSeekBar.getProgress());
+						mSelectedSeekBar.setProgress(mSelectedSeekBar
+								.getProgress() + 1);
+						Log.d ("Swati", "Moving right " + mSelectedSeekBar.getProgress());
+					}
+					return true;
+				default:
+					return false;
+				}
+			}
+
+			public void onDestroyActionMode(ActionMode mode) {
+				mSelectedSeekBar = null;
+				mActionModeShown = false;
+			}
+		};
+
+		private SeekBarOnTouchCallback mOnSeekBarTouchCallback = new SeekBarOnTouchCallback() {
+			@Override
+			public void onTouch(SeekBar mSeekBar) {
+			mSelectedSeekBar = mSeekBar;
+			if (!mActionModeShown)
+			    startActionMode(mActionModeCallback);
+			}
+	    };
+	    
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
 			Video currentVideo = mList.get(position);
 
+			Log.d("Swati", "Entered getView");
 			if (convertView == null) {
 				convertView = mInflater.inflate(R.layout.main_clips_list_item,
 						null);
+			} else {
+				TextView tv = (TextView) convertView
+						.findViewById(R.id.MainClipsTV);
+				String clipText = tv.getText().toString();
+				String clipNo = null;
+
+				if (clipText != null)
+					clipNo = clipText
+							.substring((clipText.lastIndexOf(" ") + 1));
+
+				if ((clipNo != null)
+						&& (position + 1) != Integer.parseInt(clipNo)) {
+					Log.d("Swati", "Clearing");
+					((LinearLayout) convertView
+							.findViewById(R.id.MainClipsLLContainer))
+							.removeAllViews();
+				} else {
+					return convertView;
+				}
 			}
 
 			/** NOTE: Setting the background color of tiles */
@@ -235,8 +226,11 @@ public class MainActivity extends Activity {
 					.split("\\s*,\\s*"));
 			mLinearLayout = (LinearLayout) convertView
 					.findViewById(R.id.MainClipsLLContainer);
+			int count = 0;
 			for (String thumbnailPath : thumbnailList) {
 
+				count++;
+				Log.d("Swati", "Adding path = " + thumbnailPath);
 				ImageView iv = new ImageView(getContext());
 				mLinearLayout.addView(iv, this.params);
 
@@ -247,13 +241,28 @@ public class MainActivity extends Activity {
 				iv.setOnLongClickListener(this);
 			}
 
-			mStartSeekBar = (ThumbOnlySeekBar) convertView
+			long duration = currentVideo.duration;
+			mStartSeekBar = (SeekBar) convertView
 					.findViewById(R.id.MainClipsStartSB);
-			mStartSeekBar.setOnTouchCallback(mOnSeekBarTouchCallback);
-			mEndSeekBar = (ThumbOnlySeekBar) convertView
+			mEndSeekBar = (SeekBar) convertView
 					.findViewById(R.id.MainClipsEndSB);
-			mEndSeekBar.setOnTouchCallback(mOnSeekBarTouchCallback);
-			mMainClipsHSV = (HorizontalScrollView) convertView.findViewById(R.id.MainClipsHSV);
+
+			int progress = (int) (duration * 60 / count);
+			if (progress < 10)
+				progress = (int) (duration * 60 * 10);
+			else
+				progress = (int) (duration * 60);
+
+			Log.d("Swati", "Progress = " + progress);
+			mStartSeekBar.setMax((int) (progress));
+			mEndSeekBar.setMax((int) (progress));
+
+			mStartSeekBar.setProgress(0);
+			mEndSeekBar.setProgress((int) progress);
+
+			((ThumbOnlySeekBar) mStartSeekBar).setOnTouchCallback(mOnSeekBarTouchCallback);
+			((ThumbOnlySeekBar)mEndSeekBar).setOnTouchCallback(mOnSeekBarTouchCallback);
+
 			return convertView;
 		}
 
@@ -374,6 +383,8 @@ public class MainActivity extends Activity {
 
 		Log.d("Swati", "Duration = " + mDuration);
 		noOfFrames = (Math.log(mDuration) / Math.log(2)) + 1;
+		if (noOfFrames > 4)
+			noOfFrames = 4;
 
 		secondInterval = (float) (mDuration / noOfFrames);
 		Log.d("Swati", "noofframes = " + noOfFrames + " secondinterval = "
