@@ -30,6 +30,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -103,6 +104,22 @@ public class MainActivity extends Activity {
 		mVideoList.setAdapter(mVideoListAdapter);
 	}
 
+	@Override
+	public void onPause() {
+		super.onPause();
+
+		if (mVideos == null) {
+			return;
+		}
+
+		for (Video currentVideo : mVideos) {
+			Log.d("Swati", "onPause Video = " + currentVideo.id
+					+ " thumbnails = " + currentVideo.thumbnails);
+			VideoCohereApplication.mDBA.updateSelections(currentVideo.id,
+					currentVideo.startTime, currentVideo.endTime);
+		}
+	}
+
 	public class VideoListArrayAdapter extends ArrayAdapter<Video> implements
 			View.OnClickListener, View.OnLongClickListener {
 
@@ -110,8 +127,6 @@ public class MainActivity extends Activity {
 		private LayoutInflater mInflater;
 		/* TODO why is this needed? */
 		private ViewGroup.MarginLayoutParams params = null;
-		private SeekBar mStartSeekBar;
-		private SeekBar mEndSeekBar;
 		private SeekBar mSelectedSeekBar;
 		protected boolean mActionModeShown = false;
 
@@ -146,22 +161,32 @@ public class MainActivity extends Activity {
 
 				switch (item.getItemId()) {
 				case R.id.left_button:
-					
+
 					if (mSelectedSeekBar != null) {
-						Log.d("Swati", "Moving left " + mSelectedSeekBar.getProgress());
+						Log.d("Swati",
+								"Moving left " + mSelectedSeekBar.getProgress());
 						mSelectedSeekBar.setProgress(mSelectedSeekBar
 								.getProgress() - 1);
-						Log.d("Swati", "Moving left " + mSelectedSeekBar.getProgress());
+						Log.d("Swati",
+								"Moving left " + mSelectedSeekBar.getProgress());
 					}
 					return true;
 				case R.id.right_button:
-					
+
 					if (mSelectedSeekBar != null) {
-						Log.d ("Swati", "Moving right " + mSelectedSeekBar.getProgress());
+						Log.d("Swati",
+								"Moving right "
+										+ mSelectedSeekBar.getProgress());
 						mSelectedSeekBar.setProgress(mSelectedSeekBar
 								.getProgress() + 1);
-						Log.d ("Swati", "Moving right " + mSelectedSeekBar.getProgress());
+						Log.d("Swati",
+								"Moving right "
+										+ mSelectedSeekBar.getProgress());
 					}
+					return true;
+				case R.id.toggle_button:
+					mSelectedSeekBar = (SeekBar) mSelectedSeekBar
+							.getTag(R.string.tag_toggle);
 					return true;
 				default:
 					return false;
@@ -177,18 +202,24 @@ public class MainActivity extends Activity {
 		private SeekBarOnTouchCallback mOnSeekBarTouchCallback = new SeekBarOnTouchCallback() {
 			@Override
 			public void onTouch(SeekBar mSeekBar) {
-			mSelectedSeekBar = mSeekBar;
-			if (!mActionModeShown)
-			    startActionMode(mActionModeCallback);
+				mSelectedSeekBar = mSeekBar;
+
+				if (!mActionModeShown)
+					startActionMode(mActionModeCallback);
 			}
-	    };
-	    
+		};
+
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
+			SeekBar mStartSeekBar = null;
+			SeekBar mEndSeekBar = null;
+
 			Video currentVideo = mList.get(position);
 
-			Log.d("Swati", "Entered getView");
+			Log.d("Swati", "Entered getView Video = " + currentVideo.id
+					+ " position = " + position);
 			if (convertView == null) {
+				Log.d("Swati", "convertview = null");
 				convertView = mInflater.inflate(R.layout.main_clips_list_item,
 						null);
 			} else {
@@ -201,13 +232,17 @@ public class MainActivity extends Activity {
 					clipNo = clipText
 							.substring((clipText.lastIndexOf(" ") + 1));
 
+				Log.d("Swati", "ClipText = " + clipText);
 				if ((clipNo != null)
 						&& (position + 1) != Integer.parseInt(clipNo)) {
 					Log.d("Swati", "Clearing");
 					((LinearLayout) convertView
 							.findViewById(R.id.MainClipsLLContainer))
 							.removeAllViews();
+					convertView = mInflater.inflate(
+							R.layout.main_clips_list_item, null);
 				} else {
+					Log.d("Swati", "Returning convertview");
 					return convertView;
 				}
 			}
@@ -241,12 +276,12 @@ public class MainActivity extends Activity {
 				iv.setOnLongClickListener(this);
 			}
 
-			long duration = currentVideo.duration;
 			mStartSeekBar = (SeekBar) convertView
 					.findViewById(R.id.MainClipsStartSB);
 			mEndSeekBar = (SeekBar) convertView
 					.findViewById(R.id.MainClipsEndSB);
 
+			long duration = currentVideo.duration;
 			int progress = (int) (duration * 60 / count);
 			if (progress < 10)
 				progress = (int) (duration * 60 * 10);
@@ -257,11 +292,136 @@ public class MainActivity extends Activity {
 			mStartSeekBar.setMax((int) (progress));
 			mEndSeekBar.setMax((int) (progress));
 
-			mStartSeekBar.setProgress(0);
-			mEndSeekBar.setProgress((int) progress);
+			if (currentVideo.startTime == -1)
+				currentVideo.startTime = 0;
 
-			((ThumbOnlySeekBar) mStartSeekBar).setOnTouchCallback(mOnSeekBarTouchCallback);
-			((ThumbOnlySeekBar)mEndSeekBar).setOnTouchCallback(mOnSeekBarTouchCallback);
+			if (currentVideo.endTime == -1)
+				currentVideo.endTime = progress;
+
+			mStartSeekBar.setTag(R.string.tag_video, currentVideo);
+			mStartSeekBar.setTag(R.string.tag_is_start_time, true);
+			mStartSeekBar.setTag(R.string.tag_toggle, mEndSeekBar);
+
+			mEndSeekBar.setTag(R.string.tag_video, currentVideo);
+			mEndSeekBar.setTag(R.string.tag_is_start_time, false);
+			mEndSeekBar.setTag(R.string.tag_toggle, mStartSeekBar);
+
+			mStartSeekBar.setProgress((int) currentVideo.startTime);
+			mEndSeekBar.setProgress((int) currentVideo.endTime);
+
+			((ThumbOnlySeekBar) mStartSeekBar)
+					.setOnTouchCallback(mOnSeekBarTouchCallback);
+			((ThumbOnlySeekBar) mEndSeekBar)
+					.setOnTouchCallback(mOnSeekBarTouchCallback);
+
+			mStartSeekBar
+					.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+						@Override
+						public void onStopTrackingTouch(SeekBar arg0) {
+							// TODO Auto-generated method stub
+
+						}
+
+						@Override
+						public void onStartTrackingTouch(SeekBar arg0) {
+							// TODO Auto-generated method stub
+
+						}
+
+						@Override
+						public void onProgressChanged(SeekBar seekbar,
+								int position, boolean arg2) {
+							// TODO Auto-generated method stub
+							Video video = (Video) seekbar
+									.getTag(R.string.tag_video);
+							Boolean isStart = (Boolean) seekbar
+									.getTag(R.string.tag_is_start_time);
+
+							if ((video != null) && (isStart != null)) {
+								Log.d("Swati",
+										"position = " + position
+												+ " isStart = "
+												+ isStart.booleanValue()
+												+ " video start = "
+												+ video.startTime + " end = "
+												+ video.endTime);
+								if (isStart.booleanValue() == true) {
+									/*
+									 * If new position exceeds end seekbar set
+									 * to itself
+									 */
+
+									if (position > video.endTime)
+										seekbar.setProgress((int) video.startTime);
+									else
+										/* Save new position */
+										video.startTime = position;
+								} else if (isStart.booleanValue() == false) {
+
+									if (position < video.startTime)
+										seekbar.setProgress((int) video.endTime);
+									else
+										video.endTime = position;
+								}
+							}
+
+						}
+					});
+
+			mEndSeekBar
+					.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+						@Override
+						public void onStopTrackingTouch(SeekBar arg0) {
+							// TODO Auto-generated method stub
+
+						}
+
+						@Override
+						public void onStartTrackingTouch(SeekBar arg0) {
+							// TODO Auto-generated method stub
+
+						}
+
+						@Override
+						public void onProgressChanged(SeekBar seekbar,
+								int position, boolean arg2) {
+							// TODO Auto-generated method stub
+							Video video = (Video) seekbar
+									.getTag(R.string.tag_video);
+							Boolean isStart = (Boolean) seekbar
+									.getTag(R.string.tag_is_start_time);
+
+							if ((video != null) && (isStart != null)) {
+								Log.d("Swati",
+										"position = " + position
+												+ " isStart = "
+												+ isStart.booleanValue()
+												+ " video start = "
+												+ video.startTime + " end = "
+												+ video.endTime);
+								if (isStart.booleanValue() == true) {
+									/*
+									 * If new position exceeds end seekbar set
+									 * to itself
+									 */
+
+									if (position > video.endTime)
+										seekbar.setProgress((int) video.startTime);
+									else
+										/* Save new position */
+										video.startTime = position;
+								} else if (isStart.booleanValue() == false) {
+
+									if (position < video.startTime)
+										seekbar.setProgress((int) video.endTime);
+									else
+										video.endTime = position;
+								}
+							}
+						}
+					});
 
 			return convertView;
 		}

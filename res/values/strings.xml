@@ -4,5 +4,9 @@
     <string name="app_name">VideoCohere</string>
     <string name="action_settings">Settings</string>
     <string name="action_import_video">Import</string>
+    <string name="tag_video">Video</string>
+    <string name="tag_is_start_time">IsStartTime</string>
+    <string name="tag_toggle">Toggle</string>
+    <string name="toggle">Toggle Seek</string>
 
 </resources>

@@ -109,14 +109,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		return returnValue;
 	}
 	
-	public void updateSelections(String path, long startTime, long endTime) {
+	public void updateSelections(int id, long startTime, long endTime) {
 		SQLiteDatabase db = this.getWritableDatabase();
 		
 		ContentValues values = new ContentValues();
 		values.put(V_TABLE_START_TIME, startTime);
 		values.put(V_TABLE_END_TIME, endTime);
 		
-		String whereClause = V_TABLE_PATH + " = '" + path + "'";
+		String whereClause = V_TABLE_KEY + " = " + id;
 		db.update(VIDEOS_TABLE_NAME, values, whereClause, null);
 	}
 }

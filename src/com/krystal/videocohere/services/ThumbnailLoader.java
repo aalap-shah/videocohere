@@ -121,7 +121,7 @@ public class ThumbnailLoader {
 		mCount = (int) noOfFrames;
 		mVideo = video;
 		mCallback = callback;
-		for (i = 0; i < noOfFrames; i++) {
+		for (i = 0; i < mCount; i++) {
 			String thumbnailPath = VideoCohereApplication.getThumbnailPathFromVideoPath(video.path, i);
 			new getFrameTask().executeOnExecutor(
 					AsyncTask.THREAD_POOL_EXECUTOR,

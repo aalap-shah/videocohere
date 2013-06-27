@@ -18,12 +18,12 @@ import android.util.Log;
 import com.krystal.videocohere.database.DatabaseHelper;
 import com.krystal.videocohere.services.ThumbnailLoader;
 
-public class VideoCohereApplication extends Application{
-	private DatabaseHelper mDBA;
+public class VideoCohereApplication extends Application {
+	public static DatabaseHelper mDBA;
 	public static ThumbnailLoader mTL = null;
 	private SharedPreferences mPrefs = null;
 	private static String mExtFileDirectory = null;
-	
+
 	@Override
 	public void onCreate() {
 		mDBA = new DatabaseHelper(getApplicationContext());
@@ -31,15 +31,15 @@ public class VideoCohereApplication extends Application{
 		mPrefs = this.getSharedPreferences("com.krystal.videocohere",
 				Context.MODE_PRIVATE);
 		setDefaultCameraResolution();
-		
+
 		mExtFileDirectory = getApplicationContext().getExternalFilesDir(
 				Environment.DIRECTORY_MOVIES).getAbsolutePath();
 	}
-	
+
 	public DatabaseHelper getDBA() {
 		return mDBA;
 	}
-	
+
 	public static String getFilePathFromContentUri(Uri selectedVideoUri,
 			ContentResolver contentResolver) {
 		String filePath;
@@ -68,7 +68,7 @@ public class VideoCohereApplication extends Application{
 		}
 		return filePath;
 	}
-	
+
 	public void setDefaultCameraResolution() {
 
 		Camera c = null;
@@ -126,13 +126,17 @@ public class VideoCohereApplication extends Application{
 			maxHeight = 96;
 		}
 
-		mPrefs.edit().putInt("com.krystal.videocohere.standardheight", maxHeight)
-				.putInt("com.krystal.videocohere.standardwidth", maxWidth).commit();
+		mPrefs.edit()
+				.putInt("com.krystal.videocohere.standardheight", maxHeight)
+				.putInt("com.krystal.videocohere.standardwidth", maxWidth)
+				.commit();
 	}
-	
+
 	public static String getThumbnailPathFromVideoPath(String mPath, int frame) {
-		String filename = mPath.substring(mPath.lastIndexOf("/"), mPath.length() - 4) + "_" + frame + ".png";
-		Log.d ("Swati", "Filename = " + mExtFileDirectory + filename);
+		String filename = mPath.substring(mPath.lastIndexOf("/"),
+				mPath.length() - 4)
+				+ "_" + frame + ".png";
+		Log.d("Swati", "Filename = " + mExtFileDirectory + filename);
 		return mExtFileDirectory + filename;
 	}
 }

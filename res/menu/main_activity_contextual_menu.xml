@@ -2,11 +2,18 @@
 
     <item
         android:id="@+id/left_button"
-        android:icon="@drawable/leftarrow">
+        android:icon="@drawable/leftarrow"
+        android:showAsAction="always" >
     </item>
     <item
         android:id="@+id/right_button"
-        android:icon="@drawable/rightarrow">
+        android:icon="@drawable/rightarrow"
+        android:showAsAction="always" >
+    </item>
+    <item
+        android:id="@+id/toggle_button"
+        android:title="@string/toggle"
+        android:showAsAction="always" >
     </item>
 
 </menu>
