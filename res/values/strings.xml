@@ -8,5 +8,6 @@
     <string name="tag_is_start_time">IsStartTime</string>
     <string name="tag_toggle">Toggle</string>
     <string name="toggle">Toggle Seek</string>
+    <string name="action_merge_videos">Merge</string>
 
 </resources>

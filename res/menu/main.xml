@@ -5,9 +5,15 @@
         android:orderInCategory="100"
         android:showAsAction="never"
         android:title="@string/action_settings"/>
-    <item android:id="@+id/action_import_video"
+    <item
+        android:id="@+id/action_import_video"
         android:orderInCategory="100"
-        android:title="@string/action_import_video"
-        android:showAsAction="always" 
-        />
+        android:showAsAction="always"
+        android:title="@string/action_import_video"/>
+    <item
+        android:id="@+id/action_merge_videos"
+        android:orderInCategory="100"
+        android:showAsAction="always"
+        android:title="@string/action_merge_videos"/>
+
 </menu>

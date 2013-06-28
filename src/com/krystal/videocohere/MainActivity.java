@@ -1,5 +1,6 @@
 package com.krystal.videocohere;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -7,15 +8,23 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 
+import android.annotation.SuppressLint;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ActionMode;
@@ -24,26 +33,28 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.coremedia.iso.IsoFile;
 import com.coremedia.iso.boxes.MovieBox;
 import com.coremedia.iso.boxes.TrackBox;
 import com.coremedia.iso.boxes.TrackHeaderBox;
-import com.googlecode.mp4parser.authoring.Movie;
-import com.googlecode.mp4parser.authoring.Track;
-import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
 import com.krystal.videocohere.ThumbOnlySeekBar.SeekBarOnTouchCallback;
 import com.krystal.videocohere.database.Video;
 import com.krystal.videocohere.services.ThumbnailLoader;
+import com.krystal.videocohere.services.TranscodingService;
 
 public class MainActivity extends Activity {
 	List<Video> mVideos = null;
@@ -52,21 +63,33 @@ public class MainActivity extends Activity {
 	private static String mPath = null;
 	private SharedPreferences mPrefs = null;
 	private MediaMetadataRetriever mMediaRetriever = null;
-	private int mVideoWidth = 0, mVideoHeight = 0;
 	private LinearLayout mLinearLayout;
 	private float mDuration = 0;
-	private List<Track> tracks = null;
-	private ProgressDialog mThumbnailPB;
+	private ProgressDialog mThumbnailPB = null;
+	private VideoView mVideoView = null;
+	private Video mOutputVideo = null;
+	private ImageView mMainVideoIV = null;
+	private ImageView mMainVideoFullScreenIV = null;
+	private ProgressBar mMainVideoPB;
+	private int mCurrentVideo = -1;
+	private TranscodingServiceBroadcastReceiver mDataBroadcastReceiver = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
+		ActionBar actionBar = getActionBar();
+		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
+		actionBar.setDisplayShowTitleEnabled(false);
+
 		mPrefs = this.getSharedPreferences("com.krystal.videocohere",
 				Context.MODE_PRIVATE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.MainClipsLLContainer);
-
+		mVideoView = (VideoView) findViewById(R.id.MainVideoVV);
+		mMainVideoIV = (ImageView) findViewById(R.id.MainVideoIV);
+		mMainVideoFullScreenIV = (ImageView) findViewById(R.id.MainVideoFullscreenIV);
+		mMainVideoPB = (ProgressBar) findViewById(R.id.MainVideoPB);
 	}
 
 	@Override
@@ -87,6 +110,14 @@ public class MainActivity extends Activity {
 			return true;
 		case R.id.action_settings:
 			return true;
+		case R.id.action_merge_videos:
+			updateMyLifeViews(R.drawable.play, null, View.INVISIBLE,
+					View.VISIBLE, View.INVISIBLE);
+			Log.d("qwe", "Calling service");
+			intent = new Intent(this, TranscodingService.class);
+			intent.setAction(TranscodingService.ActionMergeAllVideos);
+			startService(intent);
+			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}
@@ -102,11 +133,170 @@ public class MainActivity extends Activity {
 		mVideoListAdapter = new VideoListArrayAdapter(this, mVideos);
 		ListView mVideoList = (ListView) findViewById(R.id.MainClipsLV);
 		mVideoList.setAdapter(mVideoListAdapter);
+
+		FrameLayout mMainVideoFL = (FrameLayout) findViewById(R.id.MainVideoFL);
+		new MediaController(this, mMainVideoFL, mVideoView);
+
+		mVideoView
+				.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+
+					@Override
+					public void onCompletion(MediaPlayer vmp) {
+					/*	mOutputVideo = VideoCohereApplication.getOutputFile();
+						if (mOutputVideo != null) {
+							updateMyLifeViews(R.drawable.play,
+									mOutputVideo.thumbnails, View.VISIBLE,
+									View.INVISIBLE, View.VISIBLE);
+						} else {
+							updateMyLifeViews(R.drawable.no_video, null,
+									View.VISIBLE, View.INVISIBLE,
+									View.INVISIBLE);
+						}*/
+					}
+				});
+
+		mVideoView.setOnErrorListener(new OnErrorListener() {
+			@Override
+			public boolean onError(MediaPlayer arg0, int arg1, int arg2) {
+				Log.e("asd", "Cant Play This Video :(");
+				return true;
+			}
+		});
+
+		mVideoView.setOnPreparedListener(new OnPreparedListener() {
+
+			@Override
+			public void onPrepared(MediaPlayer arg0) {
+				Log.d("asd", "asdsadsadsadsa");
+				if ((mCurrentVideo == -1) && (mOutputVideo != null)) {
+					updateMyLifeViews(R.drawable.play, mOutputVideo.thumbnails,
+							View.VISIBLE, View.INVISIBLE, View.VISIBLE);
+					// TODO check
+					mVideoView.seekTo(0);
+				}
+			}
+		});
+
+		mMainVideoIV.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View view) {
+				if (view.getTag() != null) {
+					updateMyLifeViews(R.drawable.play, null, View.INVISIBLE,
+							View.INVISIBLE, View.INVISIBLE);
+					mVideoView.start();
+				}
+			}
+		});
+
+		mMainVideoFullScreenIV.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View view) {
+				if (mOutputVideo != null) {
+					Intent playIntent = new Intent();
+					playIntent.setAction(Intent.ACTION_VIEW);
+					playIntent.setDataAndType(
+							Uri.fromFile(new File(mOutputVideo.path)),
+							"video/*");
+
+					startActivity(playIntent);
+				}
+			}
+		});
+
+		if ((mVideos != null) && (mVideos.size() > 0)) {
+			Video mLastVideo = mVideos.get(0);
+			Log.d("Swati", "Video path = " + mLastVideo.path);
+			mVideoView.setVideoPath(mLastVideo.path);
+			mVideoView.requestFocus();
+
+			int end = mLastVideo.thumbnails.indexOf(",");
+			String image = mLastVideo.thumbnails.substring(0, end);
+			updateMyLifeViews(R.drawable.play, image, View.VISIBLE,
+					View.INVISIBLE, View.VISIBLE);
+		}
+	}
+
+	public class TranscodingServiceBroadcastReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			Log.d ("qwe", "Enterd onRecieve");
+			if (intent.hasExtra("OutputFileName") && this != null) {
+				String outputFile = intent.getStringExtra("OutputFileName");
+
+				if (!outputFile.isEmpty()) {
+					Log.d("qwe", "Outputfile is not empty");
+					mOutputVideo = VideoCohereApplication.getOutputFile();
+
+					if (mOutputVideo != null) {
+						Log.d("qwe", "Setting output video path");
+						mVideoView.setVideoPath(mOutputVideo.path);
+						mVideoView.requestFocus();
+						mCurrentVideo = -1;
+					}
+				} else {
+					Log.d("qwe", "Outputfile is empty");
+					if (intent.hasExtra("Error")) {
+						Toast.makeText(getApplicationContext(),
+								intent.getStringExtra("Error"),
+								Toast.LENGTH_LONG).show();
+					}
+					updateMyLifeViews(R.drawable.no_video, null, View.VISIBLE,
+							View.INVISIBLE, View.INVISIBLE);
+				}
+			}
+		}
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+
+		if (mDataBroadcastReceiver == null)
+			mDataBroadcastReceiver = new TranscodingServiceBroadcastReceiver();
+
+		IntentFilter intentFilter = new IntentFilter(
+				TranscodingService.ActionMergeAllVideos);
+		LocalBroadcastManager.getInstance(this).registerReceiver(
+				mDataBroadcastReceiver, intentFilter);
+	}
+
+	@SuppressLint("NewApi")
+	public void updateMyLifeViews(int IVRes, String IVPath, int IVVis,
+			int PBVis, int TVVis) {
+
+		if (android.os.Build.VERSION.SDK_INT == 14
+				|| android.os.Build.VERSION.SDK_INT == 15) {
+			mMainVideoIV.setAlpha(200);
+		} else if (android.os.Build.VERSION.SDK_INT >= 16) {
+			mMainVideoIV.setImageAlpha(200);
+		}
+		if (IVPath != null) {
+			// VideoCohereApplication.mTL.loadImage(IVPath, mMainVideoIV);
+			mMainVideoIV.setTag(IVPath);
+			mMainVideoFullScreenIV.setVisibility(View.VISIBLE);
+		} else {
+			mMainVideoIV.setImageResource(IVRes);
+			mMainVideoIV.setBackgroundColor(getResources().getColor(
+			android.R.color.black));
+			mMainVideoIV.setTag(null);
+			mMainVideoFullScreenIV.setVisibility(View.INVISIBLE);
+		}
+		mMainVideoIV.requestLayout();
+		mMainVideoIV.setVisibility(IVVis);
+		mMainVideoPB.setVisibility(PBVis);
+
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
+
+		if (mDataBroadcastReceiver != null)
+			LocalBroadcastManager.getInstance(this).unregisterReceiver(
+					mDataBroadcastReceiver);
 
 		if (mVideos == null) {
 			return;
@@ -163,25 +353,15 @@ public class MainActivity extends Activity {
 				case R.id.left_button:
 
 					if (mSelectedSeekBar != null) {
-						Log.d("Swati",
-								"Moving left " + mSelectedSeekBar.getProgress());
 						mSelectedSeekBar.setProgress(mSelectedSeekBar
 								.getProgress() - 1);
-						Log.d("Swati",
-								"Moving left " + mSelectedSeekBar.getProgress());
 					}
 					return true;
 				case R.id.right_button:
 
 					if (mSelectedSeekBar != null) {
-						Log.d("Swati",
-								"Moving right "
-										+ mSelectedSeekBar.getProgress());
 						mSelectedSeekBar.setProgress(mSelectedSeekBar
 								.getProgress() + 1);
-						Log.d("Swati",
-								"Moving right "
-										+ mSelectedSeekBar.getProgress());
 					}
 					return true;
 				case R.id.toggle_button:
@@ -198,14 +378,22 @@ public class MainActivity extends Activity {
 				mActionModeShown = false;
 			}
 		};
+		private ActionMode mActionMode;
 
 		private SeekBarOnTouchCallback mOnSeekBarTouchCallback = new SeekBarOnTouchCallback() {
 			@Override
 			public void onTouch(SeekBar mSeekBar) {
 				mSelectedSeekBar = mSeekBar;
+				Integer index = (Integer) mSelectedSeekBar
+						.getTag(R.string.tag_video);
 
+				if (mCurrentVideo != index.intValue()) {
+					mCurrentVideo = index.intValue();
+					Video v = mVideos.get(mCurrentVideo);
+					mVideoView.setVideoPath(v.path);
+				}
 				if (!mActionModeShown)
-					startActionMode(mActionModeCallback);
+					mActionMode = startActionMode(mActionModeCallback);
 			}
 		};
 
@@ -261,10 +449,9 @@ public class MainActivity extends Activity {
 					.split("\\s*,\\s*"));
 			mLinearLayout = (LinearLayout) convertView
 					.findViewById(R.id.MainClipsLLContainer);
-			int count = 0;
+
 			for (String thumbnailPath : thumbnailList) {
 
-				count++;
 				Log.d("Swati", "Adding path = " + thumbnailPath);
 				ImageView iv = new ImageView(getContext());
 				mLinearLayout.addView(iv, this.params);
@@ -272,8 +459,8 @@ public class MainActivity extends Activity {
 				VideoCohereApplication.mTL.loadImage(thumbnailPath, iv);
 				// iv.setTag(v);
 
-				iv.setOnClickListener(this);
-				iv.setOnLongClickListener(this);
+				// iv.setOnClickListener(this);
+				// iv.setOnLongClickListener(this);
 			}
 
 			mStartSeekBar = (SeekBar) convertView
@@ -282,11 +469,11 @@ public class MainActivity extends Activity {
 					.findViewById(R.id.MainClipsEndSB);
 
 			long duration = currentVideo.duration;
-			int progress = (int) (duration * 60 / count);
-			if (progress < 10)
-				progress = (int) (duration * 60 * 10);
-			else
-				progress = (int) (duration * 60);
+			/*
+			 * int progress = (int) (duration / count); if (progress < 10)
+			 * progress = (int) (duration * 10); else
+			 */
+			int progress = (int) (duration);
 
 			Log.d("Swati", "Progress = " + progress);
 			mStartSeekBar.setMax((int) (progress));
@@ -298,11 +485,11 @@ public class MainActivity extends Activity {
 			if (currentVideo.endTime == -1)
 				currentVideo.endTime = progress;
 
-			mStartSeekBar.setTag(R.string.tag_video, currentVideo);
+			mStartSeekBar.setTag(R.string.tag_video, position);
 			mStartSeekBar.setTag(R.string.tag_is_start_time, true);
 			mStartSeekBar.setTag(R.string.tag_toggle, mEndSeekBar);
 
-			mEndSeekBar.setTag(R.string.tag_video, currentVideo);
+			mEndSeekBar.setTag(R.string.tag_video, position);
 			mEndSeekBar.setTag(R.string.tag_is_start_time, false);
 			mEndSeekBar.setTag(R.string.tag_toggle, mStartSeekBar);
 
@@ -332,9 +519,11 @@ public class MainActivity extends Activity {
 						@Override
 						public void onProgressChanged(SeekBar seekbar,
 								int position, boolean arg2) {
-							// TODO Auto-generated method stub
-							Video video = (Video) seekbar
+							if (mVideoView.isPlaying())
+								mVideoView.pause();
+							Integer index = (Integer) seekbar
 									.getTag(R.string.tag_video);
+							Video video = mVideos.get(index.intValue());
 							Boolean isStart = (Boolean) seekbar
 									.getTag(R.string.tag_is_start_time);
 
@@ -354,15 +543,19 @@ public class MainActivity extends Activity {
 
 									if (position > video.endTime)
 										seekbar.setProgress((int) video.startTime);
-									else
+									else {
 										/* Save new position */
 										video.startTime = position;
+										mVideoView.seekTo(position * 1000);
+									}
 								} else if (isStart.booleanValue() == false) {
 
 									if (position < video.startTime)
 										seekbar.setProgress((int) video.endTime);
-									else
+									else {
 										video.endTime = position;
+										mVideoView.seekTo(position * 1000);
+									}
 								}
 							}
 
@@ -387,9 +580,11 @@ public class MainActivity extends Activity {
 						@Override
 						public void onProgressChanged(SeekBar seekbar,
 								int position, boolean arg2) {
-							// TODO Auto-generated method stub
-							Video video = (Video) seekbar
+							if (mVideoView.isPlaying())
+								mVideoView.pause();
+							Integer index = (Integer) seekbar
 									.getTag(R.string.tag_video);
+							Video video = mVideos.get(index.intValue());
 							Boolean isStart = (Boolean) seekbar
 									.getTag(R.string.tag_is_start_time);
 
@@ -409,20 +604,66 @@ public class MainActivity extends Activity {
 
 									if (position > video.endTime)
 										seekbar.setProgress((int) video.startTime);
-									else
+									else {
 										/* Save new position */
 										video.startTime = position;
+										mVideoView.seekTo(position * 1000);
+									}
 								} else if (isStart.booleanValue() == false) {
 
 									if (position < video.startTime)
 										seekbar.setProgress((int) video.endTime);
-									else
+									else {
 										video.endTime = position;
+										mVideoView.seekTo(position * 1000);
+									}
 								}
 							}
 						}
 					});
 
+			LinearLayout l = (LinearLayout) convertView
+					.findViewById(R.id.MainClipsOuterLL);
+			l.setTag(position);
+			l.setOnClickListener(this);
+
+			mLinearLayout.setTag(position);
+			mLinearLayout.setOnClickListener(new OnClickListener() {
+
+				@Override
+				public void onClick(View view) {
+					if (mActionModeShown)
+						mActionMode.finish();
+					LinearLayout l = (LinearLayout) view;
+					Integer p = (Integer) l.getTag();
+					int index = p.intValue();
+
+					updateMyLifeViews(R.drawable.play, null, View.INVISIBLE,
+							View.INVISIBLE, View.INVISIBLE);
+					final Video v = mVideos.get(index);
+					if (mCurrentVideo != index) {
+						mCurrentVideo = index;
+						mVideoView.setVideoPath(v.path);
+					}
+					long time = (long) ((v.endTime - v.startTime) * 1000);
+					Log.d("Swati", "Play time = " + time + "start = "
+							+ v.startTime);
+					mVideoView.seekTo((int) v.startTime * 1000);
+					mVideoView.start();
+					mVideoView.postDelayed(new Runnable() {
+
+						@Override
+						public void run() {
+							mVideoView.pause();
+							// mVideoView.seekTo((int) v.startTime * 1000);
+							int end = v.thumbnails.indexOf(",");
+							String image = v.thumbnails.substring(0, end);
+							updateMyLifeViews(R.drawable.play, image,
+									View.VISIBLE, View.INVISIBLE, View.VISIBLE);
+						}
+					}, time);
+				}
+			});
 			return convertView;
 		}
 
@@ -433,7 +674,20 @@ public class MainActivity extends Activity {
 
 		@Override
 		public void onClick(View view) {
-
+			/*
+			 * LinearLayout l = (LinearLayout) view; Integer position =
+			 * (Integer) l.getTag(); Log.d("Swati",
+			 * "Entered onclick position = " + position);
+			 * 
+			 * if ((mVideos != null) && (position != null)) { Log.d("Swati",
+			 * "onClick position = " + position.intValue()); Video mLastVideo =
+			 * mVideos.get(position.intValue()); Log.d("Swati", "Video path = "
+			 * + mLastVideo.path); mVideoView.setVideoPath(mLastVideo.path); int
+			 * end = mLastVideo.thumbnails.indexOf(","); String image =
+			 * mLastVideo.thumbnails.substring(0, end);
+			 * updateMyLifeViews(R.drawable.play, image, View.VISIBLE,
+			 * View.INVISIBLE, View.VISIBLE); }
+			 */
 		}
 
 		@Override
@@ -452,6 +706,7 @@ public class MainActivity extends Activity {
 		public long getItemId(int position) {
 			return position;
 		}
+
 	}
 
 	@Override
@@ -523,13 +778,14 @@ public class MainActivity extends Activity {
 			mDuration = Float
 					.parseFloat(mMediaRetriever
 							.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)) / 1000;
-			mVideoWidth = Integer
-					.parseInt(mMediaRetriever
-							.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-			mVideoHeight = Integer
-					.parseInt(mMediaRetriever
-							.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
-
+			/*
+			 * mVideoWidth = Integer .parseInt(mMediaRetriever
+			 * .extractMetadata(MediaMetadataRetriever
+			 * .METADATA_KEY_VIDEO_WIDTH)); mVideoHeight = Integer
+			 * .parseInt(mMediaRetriever
+			 * .extractMetadata(MediaMetadataRetriever.
+			 * METADATA_KEY_VIDEO_HEIGHT));
+			 */
 			onPrepared();
 		} else {
 			mPath = null;
@@ -565,17 +821,14 @@ public class MainActivity extends Activity {
 		mThumbnailPB.setMessage("Loading video");
 		mThumbnailPB.show();
 
-		Movie movie = null;
-		try {
-			movie = MovieCreator.build(new FileInputStream(mPath).getChannel());
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-		tracks = movie.getTracks();
-
+		/*
+		 * Movie movie = null; try { movie = MovieCreator.build(new
+		 * FileInputStream(mPath).getChannel()); } catch (FileNotFoundException
+		 * e1) { e1.printStackTrace(); } catch (IOException e1) {
+		 * e1.printStackTrace(); }
+		 * 
+		 * tracks = movie.getTracks();
+		 */
 	}
 
 	public void refreshVideoList() {
@@ -587,5 +840,15 @@ public class MainActivity extends Activity {
 		mVideoList.setAdapter(mVideoListAdapter);
 		mThumbnailPB.dismiss();
 		mThumbnailPB = null;
+
+		Video mLastVideo = mVideos.get(mVideos.size() - 1);
+		Log.d("Swati", "Video path = " + mLastVideo.path);
+		mVideoView.setVideoPath(mLastVideo.path);
+		int end = mLastVideo.thumbnails.indexOf(",");
+		String image = mLastVideo.thumbnails.substring(0, end);
+		updateMyLifeViews(R.drawable.play, image, View.VISIBLE, View.INVISIBLE,
+				View.VISIBLE);
+
+		mVideoView.requestFocus();
 	}
 }

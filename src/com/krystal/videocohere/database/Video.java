@@ -35,5 +35,9 @@ public class Video {
 		path = p;
 		duration = d;
 	}
+	
+	public Video (String p) {
+		path = p;
+	}
 }
 

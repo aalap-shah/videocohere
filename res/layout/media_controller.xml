@@ -1,0 +1,44 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="40dp"
+    android:background="@color/selectTransparentBlue"
+    android:padding="5dp"
+    android:layout_gravity="bottom" 
+    android:visibility="invisible">
+
+    <ImageView
+        android:id="@+id/MediaControllerIV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_alignParentLeft="true"
+        android:src="@android:drawable/ic_media_play" />
+
+    <TextView
+        android:id="@+id/MediaControllerTV1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/MediaControllerIV"
+        android:layout_centerVertical="true"
+        android:text="00:00"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    <TextView
+        android:id="@+id/MediaControllerTV2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:text="00:00"
+        android:layout_alignParentRight="true"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+    
+    <SeekBar
+        android:id="@+id/MediaControllerSB"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@id/MediaControllerTV2"
+        android:layout_toRightOf="@id/MediaControllerTV1"
+        android:max="1000" />
+
+</RelativeLayout>

@@ -1,5 +1,6 @@
 package com.krystal.videocohere;
 
+import java.io.File;
 import java.util.List;
 
 import android.app.Application;
@@ -12,10 +13,12 @@ import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
 import android.net.Uri;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.MediaStore.MediaColumns;
 import android.util.Log;
 
 import com.krystal.videocohere.database.DatabaseHelper;
+import com.krystal.videocohere.database.Video;
 import com.krystal.videocohere.services.ThumbnailLoader;
 
 public class VideoCohereApplication extends Application {
@@ -69,6 +72,28 @@ public class VideoCohereApplication extends Application {
 		return filePath;
 	}
 
+	public static String convertPath(String path) {
+		return path.substring(0, path.length() - 3) + "png";
+	}
+	
+	public static Video getOutputFile() {
+		String outputFilename = new String(mExtFileDirectory);
+		outputFilename = outputFilename.concat("/Output.mp4");
+		
+		File f = new File(outputFilename);
+
+		if (f.exists()) {
+			Video v = new Video(outputFilename);
+			if (!(new File(convertPath(outputFilename)).exists())) {
+				VideoCohereApplication.mTL.convertThumbnail(outputFilename,
+						MediaStore.Video.Thumbnails.FULL_SCREEN_KIND);
+			}
+			v.thumbnails = convertPath(outputFilename);
+			return v;
+		}
+		return null;
+	}
+	
 	public void setDefaultCameraResolution() {
 
 		Camera c = null;

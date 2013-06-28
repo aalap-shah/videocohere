@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
+import android.media.ThumbnailUtils;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.ImageView;
@@ -110,6 +111,24 @@ public class ThumbnailLoader {
 		}
 	}
 
+	public Bitmap convertThumbnail(String path, int kind) {
+		/**
+		 * Note: kind can be MediaStore.Video.Thumbnails.MICRO_KIND,
+		 * MediaStore.Video.Thumbnails.MINI_KIND
+		 */
+		Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(path, kind);
+
+		if (bitmap != null) {
+			try {
+				FileOutputStream out = new FileOutputStream(
+						VideoCohereApplication.convertPath(path));
+				bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return bitmap;
+	}
 	
 	public static interface ThumbnailLoaderCallback {
 		public void onSuccess (int status);
